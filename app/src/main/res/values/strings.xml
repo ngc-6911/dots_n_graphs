@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Dots and charts</string>
+    <string name="run">Run</string>
+    <string name="rerun">Run again!</string>
+
+    <string name="item_coord_x">X=</string>
+    <string name="item_coord_y">Y=</string>
+</resources>

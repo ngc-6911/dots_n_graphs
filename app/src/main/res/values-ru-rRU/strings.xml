@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Точки и диаграммы</string>
+    <string name="run">Поехали</string>
+    <string name="rerun">Поехали снова!</string>
+
+    <string name="item_coord_x">X=</string>
+    <string name="item_coord_y">Y=</string>
+</resources>
