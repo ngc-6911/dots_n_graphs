@@ -1,18 +1,23 @@
 package com.paulsavchenko.dotsandcharts
 
 import androidx.lifecycle.viewModelScope
-import com.paulsavchenko.dotsandcharts.domain.usecase.DotsUseCase
+import com.paulsavchenko.dotsandcharts.domain.usecase.BuildAdHocBezierUseCase
+import com.paulsavchenko.dotsandcharts.domain.usecase.BuildBezierUseCase
+import com.paulsavchenko.dotsandcharts.domain.usecase.FetchDotsUseCase
 import com.paulsavchenko.dotsandcharts.presentation.base.BaseViewModel
 import com.paulsavchenko.dotsandcharts.presentation.base.Event
 import com.paulsavchenko.dotsandcharts.presentation.base.State
 import com.paulsavchenko.dotsandcharts.presentation.chart.ChartState
 import com.paulsavchenko.dotsandcharts.presentation.pointcontrols.ControlsState
+import com.paulsavchenko.dotsandcharts.presentation.ui.model.BezierSplineModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
+import com.paulsavchenko.dotsandcharts.presentation.ui.model.toModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class MainViewModel @Inject constructor(
-    private val dotsUseCase: DotsUseCase,
+    private val fetchDotsUseCase: FetchDotsUseCase,
+    private val buildBezierUseCase: BuildBezierUseCase,
 ): BaseViewModel<MainEvents, MainState>(
     defaultState = MainState()
 ) {
@@ -22,7 +27,8 @@ class MainViewModel @Inject constructor(
         is MainEvents.SetDots -> applyState(
             copy(
                 chartState = chartState.copy(
-                    points = event.dots,
+                    rawPoints = event.raw,
+                    bezierPoints = event.bezier,
                 )
             )
         )
@@ -39,17 +45,15 @@ class MainViewModel @Inject constructor(
     private fun requestDots(count: Int?) {
         if (count != null) {
             viewModelScope.launch {
-                dotsUseCase(DotsUseCase.Params(count)).onSuccess {
-                    applyEvent(
-                        MainEvents.SetDots(
-                            dots = it.map { point ->
-                                PointModel(
-                                    pointX = point.pointX,
-                                    pointY = point.pointY,
-                                )
-                            }
+                fetchDotsUseCase(FetchDotsUseCase.Params(count)).onSuccess { raw ->
+                    buildBezierUseCase(BuildBezierUseCase.Params(raw)).onSuccess { bezier ->
+                        applyEvent(
+                            MainEvents.SetDots(
+                                raw = raw.map { point -> point.toModel() },
+                                bezier = bezier.map { spline -> spline.toModel() }
+                            )
                         )
-                    )
+                    }
                 }
             }
         }
@@ -58,7 +62,7 @@ class MainViewModel @Inject constructor(
 
 sealed interface MainEvents: Event {
     object RequestDots: MainEvents
-    class SetDots(val dots: List<PointModel>): MainEvents
+    class SetDots(val raw: List<PointModel>, val bezier: List<BezierSplineModel>): MainEvents
     class SetCount(val count: Int?): MainEvents
 }
 

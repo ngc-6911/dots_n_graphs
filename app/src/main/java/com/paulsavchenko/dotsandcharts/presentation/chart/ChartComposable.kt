@@ -1,75 +1,258 @@
 package com.paulsavchenko.dotsandcharts.presentation.chart
 
+import android.content.res.Configuration
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material.MaterialTheme
+import androidx.compose.foundation.gestures.detectTransformGestures
+import androidx.compose.foundation.layout.*
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.center
+import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.*
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.paulsavchenko.dotsandcharts.R
+import com.paulsavchenko.dotsandcharts.presentation.ui.model.BezierSplineModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
-import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
 import kotlin.math.absoluteValue
+
+
+@Composable
+fun ChartControlsComposable(
+    modifier: Modifier = Modifier,
+    onCenterChartCallback: () -> Unit,
+    onClearZoomCallback: () -> Unit,
+    onCenterAxisCallback: () -> Unit,
+    onBezierToggle: (Boolean) -> Unit,
+    useBezier: Boolean,
+) {
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        IconButton(onClick = onCenterAxisCallback) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_center_axis_24),
+                contentDescription = "Center axis",
+                tint = MaterialTheme.colors.primary,
+            )
+        }
+        IconButton(onClick = onCenterChartCallback) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_center_chart_24),
+                contentDescription = "Center chart",
+                tint = MaterialTheme.colors.primary,
+            )
+        }
+        IconButton(onClick = onClearZoomCallback) {
+            Icon(
+                painter = painterResource(id = R.drawable.ic_clear_zoom_24),
+                contentDescription = "Clear zoom",
+                tint = MaterialTheme.colors.primary,
+            )
+        }
+        Surface {
+            Row {
+                Text(text = stringResource(id = R.string.bezier))
+                Checkbox(checked = useBezier, onCheckedChange = onBezierToggle)
+            }
+        }
+    }
+}
+
+
 
 @Composable
 fun ChartComposable(
     modifier: Modifier = Modifier,
-    points: List<PointModel> = emptyList()
+    chartState: ChartState,
 ) {
-    val axisBrush = SolidColor(MaterialTheme.colors.secondary)
+    val axisBrush = SolidColor(MaterialTheme.colors.onSurface)
     val chartBrush = SolidColor(MaterialTheme.colors.primary)
-    val pointsSorted by remember(points) { mutableStateOf(points) }
 
-    var offset by remember { mutableStateOf(Offset.Zero) }
 
-    Box(modifier = modifier.padding(10.dp),) {
-        val path = Path()
-        Canvas(
-            modifier = modifier
-                .pointerInput(Unit) {
-                    detectDragGestures { change, dragAmount ->
-                        change.consume()
-                        offset += dragAmount
+    val pointsSquareLT by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.leftTop) }
+    val pointsMaxOffset by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.maxOffset) }
+    val pointsRectSize by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.rectSize) }
+
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    var canvasSize by remember { mutableStateOf(Size.Zero) }
+
+    var scaleFactor by remember { mutableStateOf(1f) }
+    val pointScale by remember(canvasSize, pointsMaxOffset, scaleFactor) {
+        mutableStateOf(canvasSize.width /
+                (if (pointsMaxOffset == Offset.Unspecified) 1f else pointsMaxOffset.x * 2f) * scaleFactor
+        )
+    }
+    var dragOffset by remember { mutableStateOf(Offset.Zero) }
+    var translationOffset by remember(canvasSize, isLandscape, pointsSquareLT, pointsRectSize, pointScale, dragOffset) {
+        mutableStateOf(
+            value = makeOffset(
+                pointsRect = pointsRectSize,
+                canvasSize = canvasSize,
+                pointsLeftTop = pointsSquareLT,
+                scale = pointScale,
+            ) + dragOffset
+        )
+    }
+
+    Column {
+        ChartControlsComposable(
+            onCenterAxisCallback = { dragOffset = Offset.Zero; translationOffset = canvasSize.center },
+            onCenterChartCallback = {
+                dragOffset = Offset.Zero
+                translationOffset = makeOffset(
+                    pointsRect = pointsRectSize,
+                    canvasSize = canvasSize,
+                    pointsLeftTop = pointsSquareLT,
+                    scale = pointScale,
+                )
+            },
+            onClearZoomCallback = {  },
+            onBezierToggle = {  },
+            useBezier = false,
+        )
+        Box(modifier = modifier.padding(10.dp),) {
+            val path = Path()
+            Canvas(
+                modifier = modifier
+                    .fillMaxSize()
+                    .background(Color.LightGray)
+                    .onPlaced {
+                        canvasSize = it.boundsInParent().size
                     }
-                }
-        ) {
-            val pointScale =
-                size.width / (if (pointsSorted.isEmpty()) 1f else with(pointsSorted) { maxBy { it.pointX.absoluteValue }.pointX.absoluteValue * 2f })
-            path.reset()
-            path.apply {
-                pointsSorted.forEachIndexed { index, pointModel ->
-                    val pX = pointModel.pointX * pointScale + center.x
-                    val pY =  center.y - pointModel.pointY * pointScale
+                    .pointerInput(Unit) {
+                        detectTransformGestures(panZoomLock = true) { centroid, pan, zoom, _ ->
+                            dragOffset += pan
+                            scaleFactor *= zoom
+                        }
+                    }
+            ) {
+                path.reset()
 
-                    if (index == 0) moveTo(pX, pY)
-                    else lineTo(pX, pY)
+                path.apply {
+                    if (chartState.useBezier) buildBezier(
+                        list = chartState.bezierPoints,
+                        scale = pointScale,
+                    ) else buildRaw(
+                        list = chartState.rawPoints,
+                        scale = pointScale,
+                    )
                 }
-            }
 
-            clipRect(left = 0f, top = 0f, right = size.width, bottom = size.height) {
-                drawAxis(axisBrush)
-                drawPath(brush = chartBrush, path = path, style = Stroke(5f))
-                pointsSorted.forEachIndexed { index, pointModel ->
-                    val pX = pointModel.pointX * pointScale + center.x
-                    val pY = center.y - pointModel.pointY * pointScale
-                    drawPoint(chartBrush, Offset(pX, pY))
+                clipRect(
+                    left = canvasSize.width.takeIf { isLandscape } ?: 0f,
+                    top = canvasSize.height.takeIf { isLandscape } ?: .0f,
+                    right = 0f.takeIf { isLandscape } ?: canvasSize.width,
+                    bottom = 0f.takeIf { isLandscape } ?: canvasSize.height
+                ) {
+                    translate(left = translationOffset.x, top = translationOffset.y,) {
+
+                        if (chartState.bezierUnpacked.isNotEmpty()) {
+                            drawRect(
+                                style = Stroke(5f),
+                                color = Color.Red,
+                                topLeft = pointsSquareLT * pointScale,
+                                size = pointsRectSize * pointScale,
+                            )
+                        }
+                        drawAxis(canvasSize, axisBrush, translationOffset)
+                        drawPath(brush = chartBrush, path = path, style = Stroke(5f))
+                        chartState.rawPoints.forEachIndexed { _, pointModel ->
+                            val pX = pointModel.pointX * pointScale
+                            val pY = -pointModel.pointY * pointScale
+                            drawPoint(chartBrush, Offset(pX, pY))
+                        }
+                        chartState.bezierPoints.forEachIndexed { _, pointModel ->
+                            drawPoint(
+                                SolidColor(Color.Red.copy(alpha = 0.5f)),
+                                Offset(
+                                    pointModel.q1.pointX * pointScale,
+                                    -pointModel.q1.pointY * pointScale,
+                                ),
+                            )
+                            drawPoint(
+                                SolidColor(Color.Red.copy(alpha = 0.5f)),
+                                Offset(
+                                    pointModel.q2.pointY * pointScale,
+                                    -pointModel.q2.pointY * pointScale,
+                                ),
+                            )
+                        }
+                    }
                 }
             }
         }
     }
+}
+
+
+private fun Path.buildRaw(list: List<PointModel>, scale: Float) {
+    list.forEachIndexed { index, pointModel ->
+        val pX = pointModel.pointX * scale
+        val pY = -pointModel.pointY * scale
+        if (index == 0) moveTo(pX, pY)
+        else lineTo(pX, pY)
+    }
+}
+
+private fun Path.buildBezier(list: List<BezierSplineModel>, scale: Float) {
+    list.forEachIndexed { index, bezierModel ->
+        val pX = bezierModel.pointA.pointX * scale
+        val pY = -bezierModel.pointA.pointY * scale
+        if (index == 0) moveTo(pX, pY)
+        with(bezierModel) {
+            cubicTo(
+                x1 = q1.pointX * scale, y1 = -q1.pointY * scale,
+                x2 = q2.pointX * scale, y2 = -q2.pointY * scale,
+                x3 = pointB.pointX * scale, y3 = -pointB.pointY * scale,
+            )
+        }
+    }
+}
+
+private fun makeOffset(
+    pointsRect: Size,
+    canvasSize: Size,
+    pointsLeftTop: Offset,
+    scale: Float,
+): Offset = if (pointsRect.isSpecified) canvasSize.center - ((pointsLeftTop + pointsRect.center) * scale)
+            else Offset.Zero
+
+
+private val Collection<PointModel>.leftTop: Offset get() {
+    return if (isEmpty()) Offset.Unspecified else Offset(x = minOf { it.pointX }, y = minOf { -(it.pointY) })
+}
+
+private val Collection<PointModel>.rightBottom: Offset get() {
+    return if (isEmpty()) Offset.Unspecified else Offset(x = maxOf { it.pointX }, y = maxOf { -(it.pointY) })
+}
+
+private val Collection<PointModel>.maxOffset: Offset get() {
+    return if (isEmpty()) Offset.Unspecified else Offset(
+        x = maxOf { it.pointX.absoluteValue },
+        y = maxOf { it.pointY.absoluteValue },
+    )
+}
+
+private val Collection<PointModel>.rectSize: Size get() {
+    return if (isEmpty()) Size.Unspecified else Size(
+        width = rightBottom.x - leftTop.x,
+        height = rightBottom.y - leftTop.y,
+    )
 }
 
 private fun DrawScope.drawPoint(brush: Brush, center: Offset, radius: Dp = 5.dp) {
@@ -88,44 +271,31 @@ private fun DrawScope.drawPoint(brush: Brush, center: Offset, radius: Dp = 5.dp)
     )
 }
 
-private fun DrawScope.drawAxis(axisBrush: Brush) {
+private fun DrawScope.drawAxis(canvasSize: Size, axisBrush: Brush, translation: Offset) {
+    val halfSizeX = canvasSize.width + translation.x.absoluteValue
+    val halfSizeY = canvasSize.height + translation.y.absoluteValue
     drawLine(
         brush = axisBrush,
-        start = Offset(0f, center.y),
-        end = Offset(size.width, center.y),
+        strokeWidth = 5f,
+        start = Offset(
+            x = -halfSizeX,
+            y = 0f,
+        ),
+        end = Offset(
+            x = halfSizeX,
+            y = 0f,
+        ),
     )
     drawLine(
         brush = axisBrush,
-        start = Offset(center.x, 0f),
-        end = Offset(center.x, size.height),
+        strokeWidth = 5f,
+        start = Offset(
+            x = 0f,
+            y = -halfSizeY,
+        ),
+        end = Offset(
+            x = 0f,
+            y = halfSizeY,
+        ),
     )
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun ChartPreviewEmpty() {
-    DotsAndchartsTheme {
-        ChartComposable(modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1.5f))
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun ChartPreviewData() {
-    DotsAndchartsTheme {
-        ChartComposable(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1.5f),
-            points = listOf(
-                PointModel(0f, 0f),
-                PointModel(-50f, 50f),
-                PointModel(-240f, 20f),
-                PointModel(100f, 50f),
-                PointModel(50f, -150f),
-            )
-        )
-    }
 }

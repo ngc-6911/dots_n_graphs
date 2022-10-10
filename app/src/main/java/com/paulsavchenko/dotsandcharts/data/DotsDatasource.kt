@@ -14,7 +14,7 @@ interface DotsDatasource {
         override suspend fun getDots(count: Int): List<PointDto> {
             val result = api.fetchPoints(count)
             val body = result.body()
-            return if (result.isSuccessful && body != null) body.points.map { PointDto(pointX = it.x, pointY = it.y) }
+            return if (result.isSuccessful && body != null) body.points.map { PointDto(pointX = it.x.toDouble(), pointY = it.y.toDouble()) }
             else throw ApiException(result.errorBody().toString())
         }
 

@@ -22,12 +22,14 @@ import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
 fun PointsListComposable(
     points: List<PointModel>,
 ) {
-    LazyColumn(
-
-    ) {
-        itemsIndexed(items = points) { idx, point ->
-            PointItem(pointModel = point)
-            if (idx != points.lastIndex) Divider(thickness = 2.dp)
+    Box {
+        LazyColumn(
+            modifier = Modifier
+        ) {
+            itemsIndexed(items = points) { idx, point ->
+                PointItem(pointModel = point)
+                if (idx != points.lastIndex) Divider(thickness = 2.dp)
+            }
         }
     }
 

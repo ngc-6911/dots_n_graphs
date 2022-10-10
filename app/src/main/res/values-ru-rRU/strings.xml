@@ -6,4 +6,5 @@
 
     <string name="item_coord_x">X=</string>
     <string name="item_coord_y">Y=</string>
+    <string name="bezier">Использовать Безье</string>
 </resources>

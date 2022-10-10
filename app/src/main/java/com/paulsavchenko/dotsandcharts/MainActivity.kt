@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
@@ -13,6 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -69,12 +71,12 @@ fun Portrait(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f),
-            points = mainState.chartState.pointsSorted,
+            chartState = mainState.chartState,
         )
         Divider(thickness = 1.dp)
         Box {
             PointsListComposable(
-                points = mainState.chartState.pointsSorted,
+                points = mainState.chartState.rawPoints,
             )
         }
     }
@@ -86,15 +88,14 @@ fun Landscape(
     viewEvents: ((MainEvents) -> Unit)? = null,
 ) {
     Row {
-        ChartComposable(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(3f),
-            points = mainState.chartState.pointsSorted,
-        )
+        Box(modifier = Modifier.fillMaxSize().weight(3f)) {
+            ChartComposable(
+                chartState = mainState.chartState,
+            )
+        }
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .weight(1f),
         ) {
             PointControlsComposable(
@@ -104,79 +105,9 @@ fun Landscape(
             Divider(thickness = 1.dp)
             Box {
                 PointsListComposable(
-                    points = mainState.chartState.pointsSorted,
+                    points = mainState.chartState.rawPoints,
                 )
             }
         }
-    }
-}
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun DefaultPreviewPortrait() {
-    DotsAndchartsTheme {
-        Portrait(
-            MainState(
-                chartState = ChartState(
-                    points = listOf(
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                    ),
-                )
-            )
-        )
-    }
-}
-
-
-@Preview(showBackground = true, showSystemUi = true)
-@Composable
-fun DefaultPreviewLandscape() {
-    DotsAndchartsTheme {
-        Landscape(
-            MainState(
-                chartState = ChartState(
-                    points = listOf(
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),
-                        PointModel(0.2f, 100.4f),
-                        PointModel(-0.422f, 50.2f),
-                        PointModel(-98.2f, 1.5f),
-                        PointModel(9.2f, 55.5f),
-                        PointModel(5.2f, 9.8f),),
-                )
-            )
-        )
     }
 }
