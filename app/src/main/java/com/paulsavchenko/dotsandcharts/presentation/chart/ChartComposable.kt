@@ -2,11 +2,11 @@ package com.paulsavchenko.dotsandcharts.presentation.chart
 
 import android.content.res.Configuration
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -23,32 +23,22 @@ import androidx.compose.ui.layout.boundsInParent
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.paulsavchenko.dotsandcharts.R
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.BezierSplineModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
 import kotlin.math.absoluteValue
+import kotlin.math.max
+import kotlin.math.min
 
 
 @Composable
 fun ChartControlsComposable(
     modifier: Modifier = Modifier,
     onCenterChartCallback: () -> Unit,
-    onClearZoomCallback: () -> Unit,
-    onCenterAxisCallback: () -> Unit,
-    onBezierToggle: (Boolean) -> Unit,
-    useBezier: Boolean,
 ) {
     Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        IconButton(onClick = onCenterAxisCallback) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_center_axis_24),
-                contentDescription = "Center axis",
-                tint = MaterialTheme.colors.primary,
-            )
-        }
         IconButton(onClick = onCenterChartCallback) {
             Icon(
                 painter = painterResource(id = R.drawable.ic_center_chart_24),
@@ -56,23 +46,8 @@ fun ChartControlsComposable(
                 tint = MaterialTheme.colors.primary,
             )
         }
-        IconButton(onClick = onClearZoomCallback) {
-            Icon(
-                painter = painterResource(id = R.drawable.ic_clear_zoom_24),
-                contentDescription = "Clear zoom",
-                tint = MaterialTheme.colors.primary,
-            )
-        }
-        Surface {
-            Row {
-                Text(text = stringResource(id = R.string.bezier))
-                Checkbox(checked = useBezier, onCheckedChange = onBezierToggle)
-            }
-        }
     }
 }
-
-
 
 @Composable
 fun ChartComposable(
@@ -93,8 +68,8 @@ fun ChartComposable(
 
     var scaleFactor by remember { mutableStateOf(1f) }
     val pointScale by remember(canvasSize, pointsMaxOffset, scaleFactor) {
-        mutableStateOf(canvasSize.width /
-                (if (pointsMaxOffset == Offset.Unspecified) 1f else pointsMaxOffset.x * 2f) * scaleFactor
+        mutableStateOf( min(canvasSize.width, canvasSize.height) /
+                (if (pointsMaxOffset == Offset.Unspecified) 1f else max(pointsMaxOffset.x, pointsMaxOffset.y) * 2f) * scaleFactor
         )
     }
     var dragOffset by remember { mutableStateOf(Offset.Zero) }
@@ -111,7 +86,6 @@ fun ChartComposable(
 
     Column {
         ChartControlsComposable(
-            onCenterAxisCallback = { dragOffset = Offset.Zero; translationOffset = canvasSize.center },
             onCenterChartCallback = {
                 dragOffset = Offset.Zero
                 translationOffset = makeOffset(
@@ -121,16 +95,12 @@ fun ChartComposable(
                     scale = pointScale,
                 )
             },
-            onClearZoomCallback = {  },
-            onBezierToggle = {  },
-            useBezier = false,
         )
         Box(modifier = modifier.padding(10.dp),) {
             val path = Path()
             Canvas(
                 modifier = modifier
                     .fillMaxSize()
-                    .background(Color.LightGray)
                     .onPlaced {
                         canvasSize = it.boundsInParent().size
                     }
@@ -175,22 +145,6 @@ fun ChartComposable(
                             val pX = pointModel.pointX * pointScale
                             val pY = -pointModel.pointY * pointScale
                             drawPoint(chartBrush, Offset(pX, pY))
-                        }
-                        chartState.bezierPoints.forEachIndexed { _, pointModel ->
-                            drawPoint(
-                                SolidColor(Color.Red.copy(alpha = 0.5f)),
-                                Offset(
-                                    pointModel.q1.pointX * pointScale,
-                                    -pointModel.q1.pointY * pointScale,
-                                ),
-                            )
-                            drawPoint(
-                                SolidColor(Color.Red.copy(alpha = 0.5f)),
-                                Offset(
-                                    pointModel.q2.pointY * pointScale,
-                                    -pointModel.q2.pointY * pointScale,
-                                ),
-                            )
                         }
                     }
                 }

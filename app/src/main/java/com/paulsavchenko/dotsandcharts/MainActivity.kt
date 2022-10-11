@@ -4,8 +4,6 @@ import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.viewModels
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
@@ -14,19 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.CreationExtras
-import androidx.lifecycle.viewmodel.viewModelFactory
 import com.paulsavchenko.dotsandcharts.presentation.chart.ChartComposable
-import com.paulsavchenko.dotsandcharts.presentation.chart.ChartState
 import com.paulsavchenko.dotsandcharts.presentation.pointcontrols.PointControlsComposable
 import com.paulsavchenko.dotsandcharts.presentation.pointslist.PointsListComposable
-import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
 
 class MainActivity : ComponentActivity() {

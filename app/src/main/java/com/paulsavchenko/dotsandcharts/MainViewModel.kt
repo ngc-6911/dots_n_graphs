@@ -1,7 +1,6 @@
 package com.paulsavchenko.dotsandcharts
 
 import androidx.lifecycle.viewModelScope
-import com.paulsavchenko.dotsandcharts.domain.usecase.BuildAdHocBezierUseCase
 import com.paulsavchenko.dotsandcharts.domain.usecase.BuildBezierUseCase
 import com.paulsavchenko.dotsandcharts.domain.usecase.FetchDotsUseCase
 import com.paulsavchenko.dotsandcharts.presentation.base.BaseViewModel

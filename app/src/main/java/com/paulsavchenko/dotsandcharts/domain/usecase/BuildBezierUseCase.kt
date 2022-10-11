@@ -4,7 +4,7 @@ import com.paulsavchenko.dotsandcharts.domain.base.UseCase
 import com.paulsavchenko.dotsandcharts.domain.dto.BezierSplineDto
 import com.paulsavchenko.dotsandcharts.domain.dto.PointDto
 import com.paulsavchenko.dotsandcharts.domain.utils.gauss
-import com.paulsavchenko.dotsandcharts.domain.utils.makePolynomialMatrix
+import com.paulsavchenko.dotsandcharts.domain.utils.polynomials.DistanceBasedPolynomialSystem
 import javax.inject.Inject
 
 class BuildBezierUseCase @Inject constructor(
@@ -13,7 +13,7 @@ class BuildBezierUseCase @Inject constructor(
 
     override suspend fun execute(parameters: Params): List<BezierSplineDto> {
         return gauss(
-            makePolynomialMatrix(parameters.points)
+            DistanceBasedPolynomialSystem(parameters.points)
         ).let { coeffs ->
             parameters.points.zipWithNext()
                 .zip(coeffs) { (a, b), (q1, q2) ->
