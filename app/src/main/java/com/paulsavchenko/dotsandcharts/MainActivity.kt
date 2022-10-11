@@ -53,7 +53,6 @@ fun Portrait(
     Column {
         PointControlsComposable(
             controlsState = mainState.controlsState,
-            isError = false,
             viewEvents = viewEvents
         )
         Divider(thickness = 1.dp)

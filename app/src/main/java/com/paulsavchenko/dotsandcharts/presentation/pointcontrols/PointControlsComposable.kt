@@ -1,15 +1,17 @@
 package com.paulsavchenko.dotsandcharts.presentation.pointcontrols
 
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -18,47 +20,87 @@ import androidx.compose.ui.unit.dp
 import com.paulsavchenko.dotsandcharts.MainEvents
 import com.paulsavchenko.dotsandcharts.R
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
+import com.paulsavchenko.dotsandcharts.presentation.ui.theme.InfoBlue
+import com.paulsavchenko.dotsandcharts.presentation.ui.theme.InfoOrange
+import com.paulsavchenko.dotsandcharts.presentation.ui.theme.InfoRed
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun PointControlsComposable(
     controlsState: ControlsState,
     viewEvents: ((MainEvents) -> Unit)? = null,
-    isError: Boolean = false,
 ) {
-
-    var countRemember by remember(controlsState.pointsCount) {
-        mutableStateOf(
-            controlsState.pointsCount?.toString() ?: ""
-        )
-    }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val infoTextStr = stringResource(id = R.string.info_text)
+
+    val ignore = Regex("\\D")
+    val infoText = remember(controlsState.isError) {
+        when(controlsState.isError) {
+            is Error.Input, is Error.Server -> controlsState.isError.text
+            null -> infoTextStr
+        }
+    }
+    val cardStateColor = remember(controlsState.isError) {
+        when(controlsState.isError) {
+            is Error.Input -> InfoRed
+            is Error.Server -> InfoOrange
+            null -> InfoBlue
+        }
+    }
+
     Column(
         modifier = Modifier
             .padding(10.dp)
     ) {
+        Card(
+            modifier = Modifier
+                .padding(bottom = 10.dp)
+                .fillMaxWidth(),
+            border = BorderStroke(1.dp, color = cardStateColor)
+        ) {
+            Row(
+                modifier = Modifier.padding(10.dp).wrapContentHeight(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    painter = painterResource(
+                        id = when(controlsState.isError) {
+                            is Error.Input -> R.drawable.ic_error_24
+                            is Error.Server -> R.drawable.ic_refresh_24
+                            null -> R.drawable.ic_info_24
+                        }
+                    ),
+                    tint = cardStateColor,
+                    contentDescription = ""
+                )
+                Text(
+                    modifier = Modifier.fillMaxWidth()
+                        .padding(start = 10.dp, end = 10.dp),
+                    text = infoText
+                )
+            }
+        }
         TextField(
             modifier = Modifier.fillMaxWidth(),
-            value = countRemember,
+            value = controlsState.pointsCount?.toString() ?: "",
             onValueChange = {
-                countRemember = it
-                viewEvents?.invoke(MainEvents.SetCount(it.takeIf { it.isNotBlank() }?.toInt()))
+                if (!it.contains(ignore)) viewEvents?.invoke(MainEvents.SetCount(it.takeIf { it.isNotBlank() }?.toInt()))
             },
             keyboardActions = KeyboardActions(onDone = {
                 viewEvents?.invoke(MainEvents.RequestDots)
                 keyboardController?.hide()
             }),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Number, imeAction = ImeAction.Done
+            ),
         )
         Button(
             modifier = Modifier.fillMaxWidth(),
-            colors = if (isError) ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.error)
-            else ButtonDefaults.buttonColors(),
             onClick = { viewEvents?.invoke(MainEvents.RequestDots); keyboardController?.hide() }
         ) {
             Text(
                 text = stringResource(
-                    id = if (isError) R.string.rerun else R.string.run
+                    id = if (controlsState.isError is Error.Server) R.string.rerun else R.string.run
                 )
             )
         }
@@ -68,25 +110,38 @@ fun PointControlsComposable(
 
 @Preview(showBackground = true)
 @Composable
-fun PointsControlsErrorPreview() {
+fun PointsControlsPreview() {
     DotsAndchartsTheme {
         PointControlsComposable(
             ControlsState(
                 pointsCount = 100,
-                isError = false
+                isError = null
             )
         )
     }
 }
 
-@Preview(showBackground = true, locale = "ru")
+@Preview(showBackground = true, locale = "en")
 @Composable
-fun PointsControlsItemPreview() {
+fun PointsControlsInputErrorPreview() {
     DotsAndchartsTheme {
         PointControlsComposable(
             ControlsState(
                 pointsCount = null,
-                isError = true
+                isError = Error.Input("Input error")
+            )
+        )
+    }
+}
+
+@Preview(showBackground = true, locale = "en")
+@Composable
+fun PointsControlsServerPreview() {
+    DotsAndchartsTheme {
+        PointControlsComposable(
+            ControlsState(
+                pointsCount = null,
+                isError = Error.Server("Server error")
             )
         )
     }

@@ -3,6 +3,7 @@
     <string name="run">Run</string>
     <string name="rerun">Run again!</string>
     <string name="bezier">Use bezier</string>
+    <string name="info_text">Enter dots count and run!</string>
 
     <string name="item_coord_x">X=</string>
     <string name="item_coord_y">Y=</string>

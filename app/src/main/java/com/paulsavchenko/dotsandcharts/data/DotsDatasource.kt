@@ -15,10 +15,23 @@ interface DotsDatasource {
             val result = api.fetchPoints(count)
             val body = result.body()
             return if (result.isSuccessful && body != null) body.points.map { PointDto(pointX = it.x.toDouble(), pointY = it.y.toDouble()) }
-            else throw ApiException(result.errorBody().toString())
+            else throw ApiException(
+                code = result.code(),
+                message = result.errorBody()?.string() ?: "unknown"
+            )
         }
 
     }
 }
 
-class ApiException(message: String): IOException(message)
+class ApiException(
+    val code: Int,
+    message: String
+): IOException(message) {
+    inline fun onBadRequest(block: () -> Unit) {
+        if (code == 400) block()
+    }
+    inline fun onServerError(block: () -> Unit) {
+        if (code == 500) block()
+    }
+}

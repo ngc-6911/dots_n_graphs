@@ -3,6 +3,7 @@
     <string name="app_name">Точки и диаграммы</string>
     <string name="run">Поехали</string>
     <string name="rerun">Поехали снова!</string>
+    <string name="info_text">Введите количество точеки и поехали!</string>
 
     <string name="item_coord_x">X=</string>
     <string name="item_coord_y">Y=</string>

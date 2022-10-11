@@ -14,7 +14,6 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.center
 import androidx.compose.ui.geometry.isSpecified
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.drawscope.*
@@ -87,6 +86,7 @@ fun ChartComposable(
     Column {
         ChartControlsComposable(
             onCenterChartCallback = {
+                scaleFactor = 1f
                 dragOffset = Offset.Zero
                 translationOffset = makeOffset(
                     pointsRect = pointsRectSize,
@@ -132,14 +132,14 @@ fun ChartComposable(
                     translate(left = translationOffset.x, top = translationOffset.y,) {
 
                         if (chartState.bezierUnpacked.isNotEmpty()) {
-                            drawRect(
-                                style = Stroke(5f),
-                                color = Color.Red,
-                                topLeft = pointsSquareLT * pointScale,
-                                size = pointsRectSize * pointScale,
-                            )
+//                            drawRect(
+//                                style = Stroke(5f),
+//                                color = Color.Red,
+//                                topLeft = pointsSquareLT * pointScale,
+//                                size = pointsRectSize * pointScale,
+//                            )
+                            drawAxis(canvasSize, axisBrush, translationOffset)
                         }
-                        drawAxis(canvasSize, axisBrush, translationOffset)
                         drawPath(brush = chartBrush, path = path, style = Stroke(5f))
                         chartState.rawPoints.forEachIndexed { _, pointModel ->
                             val pX = pointModel.pointX * pointScale
