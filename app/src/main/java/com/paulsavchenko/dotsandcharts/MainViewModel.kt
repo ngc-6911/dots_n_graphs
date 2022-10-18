@@ -3,26 +3,40 @@ package com.paulsavchenko.dotsandcharts
 import androidx.compose.runtime.Immutable
 import androidx.lifecycle.viewModelScope
 import com.paulsavchenko.dotsandcharts.data.ApiException
-import com.paulsavchenko.dotsandcharts.domain.usecase.BuildBezierUseCase
+import com.paulsavchenko.dotsandcharts.domain.usecase.CheckStoragePermissionsUseCase
 import com.paulsavchenko.dotsandcharts.domain.usecase.FetchDotsUseCase
+import com.paulsavchenko.dotsandcharts.domain.usecase.StoreChartUseCase
 import com.paulsavchenko.dotsandcharts.presentation.base.BaseViewModel
 import com.paulsavchenko.dotsandcharts.presentation.base.Event
+import com.paulsavchenko.dotsandcharts.presentation.base.SingleEvent
 import com.paulsavchenko.dotsandcharts.presentation.base.State
 import com.paulsavchenko.dotsandcharts.presentation.chart.ChartState
 import com.paulsavchenko.dotsandcharts.presentation.pointcontrols.ControlsState
 import com.paulsavchenko.dotsandcharts.presentation.pointcontrols.Error
-import com.paulsavchenko.dotsandcharts.presentation.ui.model.BezierSplineModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
+import com.paulsavchenko.dotsandcharts.presentation.ui.model.toDto
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.toModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 class MainViewModel @Inject constructor(
     private val fetchDotsUseCase: FetchDotsUseCase,
-    private val buildBezierUseCase: BuildBezierUseCase,
-): BaseViewModel<MainEvents, MainState>(
+    private val checkStoragePermissionsUseCase: CheckStoragePermissionsUseCase,
+    private val storeChartUseCase: StoreChartUseCase,
+): BaseViewModel<MainEvents, MainState, MainSingleEvents>(
     defaultState = MainState()
 ) {
+    init {
+        viewModelScope.launch(Dispatchers.IO) {
+            checkStoragePermissionsUseCase().onSuccess { granted ->
+                if (!granted) {
+                    sendSingleEvent(MainSingleEvents.RequestPermissions)
+                }
+                applyEvent(MainEvents.SetPermissionsGranted(granted))
+            }
+        }
+    }
 
     override fun MainState.reduceState(event: MainEvents) = when(event) {
         MainEvents.RequestDots -> requestDots(controlsState.pointsCount)
@@ -30,10 +44,10 @@ class MainViewModel @Inject constructor(
             copy(
                 controlsState = controlsState.copy(
                     isError = null,
+                    canSave = event.points.isNotEmpty(),
                 ),
                 chartState = chartState.copy(
-                    rawPoints = event.raw,
-                    bezierPoints = event.bezier,
+                    points = event.points,
                 )
             )
         )
@@ -49,24 +63,52 @@ class MainViewModel @Inject constructor(
             copy(
                 controlsState = controlsState.copy(
                     isError = event.error,
+                    canSave = false,
                 ),
+                chartState = chartState.copy(
+                    points = emptyList(),
+                )
+            )
+        )
+        is MainEvents.RequestSave -> requestSave(
+            state = chartState,
+            lineColor = event.lineColor,
+            pointColor = event.pointColor,
+        )
+        is MainEvents.SetPermissionsGranted -> applyState(
+            copy(
+                controlsState = controlsState.copy(
+                    permissionsGranted = event.isGranted,
+                )
             )
         )
     }
 
+    private fun requestSave(
+        state: ChartState,
+        lineColor: Int,
+        pointColor: Int
+    ) {
+        viewModelScope.launch(Dispatchers.IO) {
+            storeChartUseCase(
+                StoreChartUseCase.Params(
+                    points = state.points.map { it.toDto() },
+                    lineColor = lineColor,
+                    pointColor = pointColor,
+                )
+            )
+        }
+    }
 
     private fun requestDots(count: Int?) {
         if (count != null) {
-            viewModelScope.launch {
+            viewModelScope.launch(Dispatchers.IO) {
                 fetchDotsUseCase(FetchDotsUseCase.Params(count)).onSuccess { raw ->
-                    buildBezierUseCase(BuildBezierUseCase.Params(raw)).onSuccess { bezier ->
-                        applyEvent(
-                            MainEvents.SetDots(
-                                raw = raw.map { point -> point.toModel() },
-                                bezier = bezier.map { spline -> spline.toModel() }
-                            )
+                    applyEvent(
+                        MainEvents.SetDots(
+                            points = raw.map { point -> point.toModel() },
                         )
-                    }
+                    )
                 }.onFailure {
                     if (it is ApiException) {
                         it.onBadRequest {
@@ -82,11 +124,17 @@ class MainViewModel @Inject constructor(
     }
 }
 
+sealed interface MainSingleEvents: SingleEvent {
+    object RequestPermissions: MainSingleEvents
+}
+
 @Immutable
 sealed interface MainEvents: Event {
     object RequestDots: MainEvents
-    class SetDots(val raw: List<PointModel>, val bezier: List<BezierSplineModel>): MainEvents
+    class RequestSave(val lineColor: Int, val pointColor: Int): MainEvents
+    class SetDots(val points: List<PointModel>): MainEvents
     class SetCount(val count: Int?): MainEvents
+    class SetPermissionsGranted(val isGranted: Boolean): MainEvents
     class OnError(val error: Error): MainEvents
 }
 

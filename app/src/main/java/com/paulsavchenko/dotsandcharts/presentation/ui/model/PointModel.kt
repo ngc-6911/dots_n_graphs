@@ -7,4 +7,5 @@ data class PointModel(
     val pointY: Float,
 )
 
-fun PointDto.toModel() = PointModel(pointX = pointX.toFloat(), pointY = pointY.toFloat())
+fun PointDto.toModel() = PointModel(pointX = pointX, pointY = pointY)
+fun PointModel.toDto() = PointDto(pointX = pointX, pointY = pointY)

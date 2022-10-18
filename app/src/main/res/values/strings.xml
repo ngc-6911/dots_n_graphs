@@ -2,6 +2,7 @@
     <string name="app_name">Dots and charts</string>
     <string name="run">Run</string>
     <string name="rerun">Run again!</string>
+    <string name="save">Save</string>
     <string name="bezier">Use bezier</string>
     <string name="info_text">Enter dots count and run!</string>
 

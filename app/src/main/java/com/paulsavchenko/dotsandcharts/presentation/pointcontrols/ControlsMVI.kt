@@ -6,6 +6,8 @@ import androidx.compose.runtime.Immutable
 data class ControlsState(
     val pointsCount: Int? = null,
     val isError: Error? = null,
+    val canSave: Boolean = false,
+    val permissionsGranted: Boolean = false,
 )
 
 sealed class Error {

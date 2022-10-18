@@ -4,7 +4,7 @@
     <string name="run">Поехали</string>
     <string name="rerun">Поехали снова!</string>
     <string name="info_text">Введите количество точеки и поехали!</string>
-
+    <string name="save">Сохранить</string>
     <string name="item_coord_x">X=</string>
     <string name="item_coord_y">Y=</string>
     <string name="bezier">Использовать Безье</string>

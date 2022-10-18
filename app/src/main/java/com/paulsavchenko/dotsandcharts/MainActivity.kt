@@ -1,9 +1,12 @@
 package com.paulsavchenko.dotsandcharts
 
+import android.Manifest
 import android.content.res.Configuration
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.ActivityResultLauncher
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.Divider
 import androidx.compose.material.MaterialTheme
@@ -14,10 +17,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.lifecycleScope
 import com.paulsavchenko.dotsandcharts.presentation.chart.ChartComposable
 import com.paulsavchenko.dotsandcharts.presentation.pointcontrols.PointControlsComposable
 import com.paulsavchenko.dotsandcharts.presentation.pointslist.PointsListComposable
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
+import kotlinx.coroutines.flow.collectLatest
 
 class MainActivity : ComponentActivity() {
 
@@ -25,8 +30,29 @@ class MainActivity : ComponentActivity() {
         (application as DotsApp).dagger.mainViewModel
     }
 
+    private lateinit var activityResultLauncher: ActivityResultLauncher<String>
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        activityResultLauncher = registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean? ->
+            isGranted?.let { granted ->
+                mainViewModel.applyEvent(MainEvents.SetPermissionsGranted(granted))
+            }
+        }
+
+        lifecycleScope.launchWhenCreated {
+            mainViewModel.singleEvents.collectLatest {
+                when(it) {
+                    MainSingleEvents.RequestPermissions -> activityResultLauncher.launch(
+                        Manifest.permission.WRITE_EXTERNAL_STORAGE
+                    )
+                }
+            }
+        }
+
         setContent {
             val orientation = LocalConfiguration.current.orientation
             DotsAndchartsTheme {
@@ -53,7 +79,7 @@ fun Portrait(
     Column {
         PointControlsComposable(
             controlsState = mainState.controlsState,
-            viewEvents = viewEvents
+            viewEvents = viewEvents,
         )
         Divider(thickness = 1.dp)
         ChartComposable(
@@ -65,7 +91,7 @@ fun Portrait(
         Divider(thickness = 1.dp)
         Box {
             PointsListComposable(
-                points = mainState.chartState.rawPoints,
+                points = mainState.chartState.points,
             )
         }
     }
@@ -89,12 +115,12 @@ fun Landscape(
         ) {
             PointControlsComposable(
                 controlsState = mainState.controlsState,
-                viewEvents = viewEvents
+                viewEvents = viewEvents,
             )
             Divider(thickness = 1.dp)
             Box {
                 PointsListComposable(
-                    points = mainState.chartState.rawPoints,
+                    points = mainState.chartState.points,
                 )
             }
         }

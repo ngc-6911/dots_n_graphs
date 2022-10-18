@@ -10,6 +10,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -19,6 +20,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.paulsavchenko.dotsandcharts.MainEvents
 import com.paulsavchenko.dotsandcharts.R
+import com.paulsavchenko.dotsandcharts.presentation.chart.ChartState
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.DotsAndchartsTheme
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.InfoBlue
 import com.paulsavchenko.dotsandcharts.presentation.ui.theme.InfoOrange
@@ -32,6 +34,9 @@ fun PointControlsComposable(
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val infoTextStr = stringResource(id = R.string.info_text)
+
+    val chartColor = MaterialTheme.colors.primary.toArgb()
+    val pointColor = MaterialTheme.colors.primaryVariant.toArgb()
 
     val ignore = Regex("\\D")
     val infoText = remember(controlsState.isError) {
@@ -59,7 +64,9 @@ fun PointControlsComposable(
             border = BorderStroke(1.dp, color = cardStateColor)
         ) {
             Row(
-                modifier = Modifier.padding(10.dp).wrapContentHeight(),
+                modifier = Modifier
+                    .padding(10.dp)
+                    .wrapContentHeight(),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
@@ -74,7 +81,8 @@ fun PointControlsComposable(
                     contentDescription = ""
                 )
                 Text(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
                         .padding(start = 10.dp, end = 10.dp),
                     text = infoText
                 )
@@ -94,15 +102,33 @@ fun PointControlsComposable(
                 keyboardType = KeyboardType.Number, imeAction = ImeAction.Done
             ),
         )
-        Button(
-            modifier = Modifier.fillMaxWidth(),
-            onClick = { viewEvents?.invoke(MainEvents.RequestDots); keyboardController?.hide() }
-        ) {
-            Text(
-                text = stringResource(
-                    id = if (controlsState.isError is Error.Server) R.string.rerun else R.string.run
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                onClick = { viewEvents?.invoke(MainEvents.RequestDots); keyboardController?.hide() }
+            ) {
+                Text(
+                    text = stringResource(
+                        id = if (controlsState.isError is Error.Server) R.string.rerun else R.string.run
+                    )
                 )
-            )
+            }
+            Button(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                onClick = { viewEvents?.invoke(
+                    MainEvents.RequestSave(
+                        lineColor = chartColor,
+                        pointColor = pointColor,
+                    )
+                ); keyboardController?.hide() },
+                enabled = controlsState.isError == null && controlsState.canSave && controlsState.permissionsGranted,
+            ) {
+                Text(
+                    text = stringResource(
+                        id = R.string.save
+                    )
+                )
+            }
         }
     }
 }
@@ -115,8 +141,8 @@ fun PointsControlsPreview() {
         PointControlsComposable(
             ControlsState(
                 pointsCount = 100,
-                isError = null
-            )
+                isError = null,
+            ),
         )
     }
 }
@@ -128,8 +154,9 @@ fun PointsControlsInputErrorPreview() {
         PointControlsComposable(
             ControlsState(
                 pointsCount = null,
-                isError = Error.Input("Input error")
-            )
+                isError = Error.Input("Input error"),
+                canSave = false,
+            ),
         )
     }
 }
@@ -141,8 +168,9 @@ fun PointsControlsServerPreview() {
         PointControlsComposable(
             ControlsState(
                 pointsCount = null,
-                isError = Error.Server("Server error")
-            )
+                isError = Error.Server("Server error"),
+                canSave = false,
+            ),
         )
     }
 }

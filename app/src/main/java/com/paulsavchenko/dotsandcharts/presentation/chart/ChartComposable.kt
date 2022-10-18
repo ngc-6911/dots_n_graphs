@@ -25,11 +25,8 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.paulsavchenko.dotsandcharts.R
-import com.paulsavchenko.dotsandcharts.presentation.ui.model.BezierSplineModel
 import com.paulsavchenko.dotsandcharts.presentation.ui.model.PointModel
-import kotlin.math.absoluteValue
-import kotlin.math.max
-import kotlin.math.min
+import kotlin.math.*
 
 
 @Composable
@@ -55,11 +52,12 @@ fun ChartComposable(
 ) {
     val axisBrush = SolidColor(MaterialTheme.colors.onSurface)
     val chartBrush = SolidColor(MaterialTheme.colors.primary)
+    val pointBrush = SolidColor(MaterialTheme.colors.primaryVariant)
 
 
-    val pointsSquareLT by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.leftTop) }
-    val pointsMaxOffset by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.maxOffset) }
-    val pointsRectSize by remember(chartState.rawPoints) { mutableStateOf(chartState.bezierUnpacked.rectSize) }
+    val pointsSquareLT by remember(chartState.points) { mutableStateOf(chartState.points.leftTop) }
+    val pointsMaxOffset by remember(chartState.points) { mutableStateOf(chartState.points.maxOffset) }
+    val pointsRectSize by remember(chartState.points) { mutableStateOf(chartState.points.rectSize) }
 
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -96,7 +94,7 @@ fun ChartComposable(
                 )
             },
         )
-        Box(modifier = modifier.padding(10.dp),) {
+        Box(modifier = modifier.padding(10.dp)) {
             val path = Path()
             Canvas(
                 modifier = modifier
@@ -112,16 +110,10 @@ fun ChartComposable(
                     }
             ) {
                 path.reset()
-
-                path.apply {
-                    if (chartState.useBezier) buildBezier(
-                        list = chartState.bezierPoints,
-                        scale = pointScale,
-                    ) else buildRaw(
-                        list = chartState.rawPoints,
-                        scale = pointScale,
-                    )
-                }
+                path.buildCosine(
+                    list = chartState.points,
+                    scale = pointScale,
+                )
 
                 clipRect(
                     left = canvasSize.width.takeIf { isLandscape } ?: 0f,
@@ -129,22 +121,16 @@ fun ChartComposable(
                     right = 0f.takeIf { isLandscape } ?: canvasSize.width,
                     bottom = 0f.takeIf { isLandscape } ?: canvasSize.height
                 ) {
-                    translate(left = translationOffset.x, top = translationOffset.y,) {
+                    translate(left = translationOffset.x, top = translationOffset.y) {
 
-                        if (chartState.bezierUnpacked.isNotEmpty()) {
-//                            drawRect(
-//                                style = Stroke(5f),
-//                                color = Color.Red,
-//                                topLeft = pointsSquareLT * pointScale,
-//                                size = pointsRectSize * pointScale,
-//                            )
+                        if (chartState.points.isNotEmpty()) {
                             drawAxis(canvasSize, axisBrush, translationOffset)
                         }
                         drawPath(brush = chartBrush, path = path, style = Stroke(5f))
-                        chartState.rawPoints.forEachIndexed { _, pointModel ->
+                        chartState.points.forEachIndexed { _, pointModel ->
                             val pX = pointModel.pointX * pointScale
                             val pY = -pointModel.pointY * pointScale
-                            drawPoint(chartBrush, Offset(pX, pY))
+                            drawPoint(pointBrush, Offset(pX, pY), radius = 3.dp)
                         }
                     }
                 }
@@ -153,29 +139,43 @@ fun ChartComposable(
     }
 }
 
-
-private fun Path.buildRaw(list: List<PointModel>, scale: Float) {
-    list.forEachIndexed { index, pointModel ->
-        val pX = pointModel.pointX * scale
-        val pY = -pointModel.pointY * scale
-        if (index == 0) moveTo(pX, pY)
-        else lineTo(pX, pY)
-    }
+fun cosineInterpolate(
+    y1: Float,
+    y2: Float,
+    mu: Float,
+): Float {
+    val mu2: Float = (1f - cos(mu * PI.toFloat())) / 2f
+    return y1 * (1f - mu2) + y2 * mu2
 }
 
-private fun Path.buildBezier(list: List<BezierSplineModel>, scale: Float) {
-    list.forEachIndexed { index, bezierModel ->
-        val pX = bezierModel.pointA.pointX * scale
-        val pY = -bezierModel.pointA.pointY * scale
-        if (index == 0) moveTo(pX, pY)
-        with(bezierModel) {
-            cubicTo(
-                x1 = q1.pointX * scale, y1 = -q1.pointY * scale,
-                x2 = q2.pointX * scale, y2 = -q2.pointY * scale,
-                x3 = pointB.pointX * scale, y3 = -pointB.pointY * scale,
-            )
+private fun Path.buildCosine(
+    list: List<PointModel>,
+    scale: Float,
+) {
+    list
+        .zipWithNext()
+        .forEachIndexed { index, (p0, p1) ->
+            val pX = p0.pointX * scale
+            val pY = -p0.pointY * scale
+            if (index == 0) moveTo(pX, pY)
+            else {
+                var mu = 0f
+                val pX1 = p1.pointX * scale
+                val pY1 = -p1.pointY * scale
+                val dx = pX1 - pX
+                repeat(100) {
+                    lineTo(
+                        x = pX + dx * mu,
+                        y = cosineInterpolate(
+                            y1 = pY,
+                            y2 = pY1,
+                            mu = mu,
+                        ),
+                    )
+                    mu += 0.01f
+                }
+            }
         }
-    }
 }
 
 private fun makeOffset(
